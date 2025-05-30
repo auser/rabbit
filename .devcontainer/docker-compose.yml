@@ -1,0 +1,30 @@
+version: "2.4"
+
+services:
+  development:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        PLATFORM: ${DOCKER_PLATFORM:-linux/amd64}
+      ssh:
+        - default
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace:cached
+      - ~/.gitconfig:/home/vscode/.gitconfig
+      - $SSH_AUTH_SOCK:$SSH_AUTH_SOCK
+    command: sleep infinity
+    depends_on:
+      - rabbitmq
+
+
+  rabbitmq:
+    image: rabbitmq:management
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit
+      RABBITMQ_DEFAULT_PASS: rabbit
+    ports:
+      - 5672:5672
+      - 15672:15672
+

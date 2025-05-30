@@ -1,0 +1,27 @@
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="agnoster"
+plugins=(git python docker zsh-autosuggestions zsh-syntax-highlighting)
+source $ZSH/oh-my-zsh.sh
+
+# Enable autosuggestions and syntax highlighting
+source $ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source $ZSH/custom/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Useful aliases
+alias ll='ls -lah'
+alias gs='git status'
+alias gp='git pull'
+alias gd='git diff'
+
+# Python prompt improvements
+export PYTHONSTARTUP=~/.pythonrc
+
+# History settings
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt inc_append_history
+setopt share_history
+
+# Prompt tweaks
+export PROMPT='%F{cyan}%n@%m%f %F{yellow}%~%f $(git_prompt_info) %# '
