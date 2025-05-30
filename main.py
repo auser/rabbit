@@ -44,26 +44,11 @@ async def upload(rmq, input):
     logger.info("Uploading rabbitmq configuration")
     await rmq.upload(input)
 
-
-# @cli.command(help="Clone script for setting up rabbitmq")
-# @click.pass_context
-# @pass_rabbitmq
-# async def clone(ctx):
-#     print(ctx.obj)
-#     await ctx.forward(download)
-#     await ctx.invoke(download)
-    # from_host = ctx.get_parameter_source("from_host")
-    # print(from_host)
-    # pass
-    # await click.echo("download")
-    # await click.echo("upload")
-    # await _clone(ctx.obj)
-
-# Helpers
-def load_env_files(env_files):
-    load_dotenv() # Default .env
-    for env_file in env_files:
-        load_dotenv(env_file)
+@cli.command(help="Upload script for setting up rabbitmq")
+@click.pass_obj
+async def clone(rmq):
+    logger.info("Cloning rabbitmq configuration")
+    await rmq.clone()
 
 
 if __name__ == "__main__":
