@@ -7,15 +7,13 @@ from dotenv import load_dotenv
 from rabbit.logging import logger
 from rabbit.rabbitmq import RabbitMQ
 
-# from rabbit import clone as _clone, download as _download, upload as _upload
 load_dotenv()
 
 pass_rabbitmq = click.make_pass_decorator(RabbitMQ, ensure=True)
 
-
 @click.group()
 @click.option("--env-file", "-e", type=str, required=False, multiple=True, help="Environment file")
-@click.option("--verbose", type=bool, required=False, flag_value=True, help="Verbose mode")
+@click.option("--verbose", '-v', count=True, required=False, default=0, help="Verbose mode")
 @click.option("--from-host", "-f", type=str, required=False, help="Host to download from")
 @click.option("--from-port", "-p", type=int, required=False, default=15672, help="Port to download from")
 @click.option("--to-host", "-t", type=str, required=False, default="localhost", help="Host to upload to")

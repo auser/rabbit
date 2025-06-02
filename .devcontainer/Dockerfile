@@ -19,8 +19,9 @@ RUN echo 'vscode ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-vscode \
     && chmod 0440 /etc/sudoers.d/90-vscode
 
 # Install oh-my-zsh and plugins for vscode user
-RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o /tmp/install.sh \
-    && sudo -u vscode RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh /tmp/install.sh \
+RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o /tmp/install.sh
+
+RUN RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh /tmp/install.sh \
     && git clone https://github.com/zsh-users/zsh-autosuggestions /home/vscode/.oh-my-zsh/custom/plugins/zsh-autosuggestions \
     && git clone https://github.com/zsh-users/zsh-syntax-highlighting /home/vscode/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting \
     && rm /tmp/install.sh

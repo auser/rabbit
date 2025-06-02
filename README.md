@@ -4,7 +4,15 @@ You should use an `.env` file to set the environment variables.
 
 ## Installation
 
-This project uses [uv](https://docs.astral.sh/uv/) to install the dependencies. First install uv with `pip install uv`. Then install the dependencies with `uv sync`.
+This project uses [uv](https://docs.astral.sh/uv/) to install the dependencies. First install uv with the instructions listed [here](https://docs.astral.sh/uv/getting-started/installation/#installation-methods). Then install the dependencies with `uv sync`.
+
+If you do not have a `.venv` directory, you can create one with `uv venv`.
+
+```bash
+uv venv
+```
+
+And then we'll need to sync the dependencies.
 
 ```bash
 uv sync

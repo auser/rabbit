@@ -12,3 +12,4 @@ wheels/
 __pycache__
 .env
 data/
+*_rabbitmq.json

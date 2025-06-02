@@ -17,6 +17,16 @@ def setup_logging(level):
         logging.ERROR:     "\033[1;31m",  # red
         logging.CRITICAL:  "\033[1;41m",  # red reverted
     }
+    logging_levels = [
+        logging.CRITICAL,
+        logging.ERROR,
+        logging.WARNING,
+        logging.INFO,
+        logging.DEBUG,
+    ]
+    if level < 0 or level > len(logging_levels) - 1:
+        raise ValueError(f"Invalid log level: {level}")
+
     def record_factory(*args, **kwargs):
         record = orig_record_factory(*args, **kwargs)
         record.levelname_c = "{}{}{}".format(
@@ -33,9 +43,10 @@ def setup_logging(level):
     formatter_c = logging.Formatter("%(levelname_c)s: %(name)s: %(message)s")
 
     stderr_handler = logging.StreamHandler()
-    stderr_handler.setLevel(level)
+    log_level = logging_levels[level]
+    stderr_handler.setLevel(log_level)
     stderr_handler.setFormatter(formatter_c)
 
     root_logger = logging.getLogger('')
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(log_level)
     root_logger.addHandler(stderr_handler)
