@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Dict, List, Optional
 
 import httpx
 import pandas as pd
-from dotenv import dotenv_values, load_dotenv
+from dotenv import load_dotenv
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from rabbit.logging import logger, setup_logging
@@ -14,30 +15,87 @@ from rabbit.utils import get_definitions_url
 
 load_dotenv() # Initial load
 
-values = dotenv_values()
+def get_env_value(key: str, default: str = "", type_cast=str):
+    """Get environment variable value with type casting"""
+    value = os.getenv(key, default)
+    if type_cast is bool:
+        return value.lower() in ('true', '1', 'yes', 'on') if isinstance(value, str) else bool(value)
+    elif type_cast is int:
+        try:
+            return int(value) if value else 0
+        except (ValueError, TypeError):
+            return 0
+    return type_cast(value) if value else default
 
 class RabbitMQ(object):
     env_files: list[str] = []
-    verbose: int = 0  # Changed to int to match logging levels
-    from_host: str = "localhost"
+    verbose: int = 0
+    
+    # Connection settings - support all via environment variables
+    from_host: str = ""
     from_port: int = 15672
-    from_username: str = values.get("RABBITMQ_FROM_USERNAME", "guest")
-    from_password: str = values.get("RABBITMQ_FROM_PASSWORD", "guest")
-    output: str | Path = "source_rabbitmq.json"
-    to_host: str = "localhost"
+    from_username: str = ""
+    from_password: str = ""
+    from_ssl: bool = False
+    from_vhost: str = "/"
+    
+    to_host: str = ""
     to_port: int = 5672
-    to_username: str = values.get("RABBITMQ_TO_USERNAME", "guest")
-    to_password: str = values.get("RABBITMQ_TO_PASSWORD", "guest")
-    input: str | Path = "source_rabbitmq.json"
+    to_username: str = ""
+    to_password: str = ""
+    to_ssl: bool = False
+    to_vhost: str = "/"
+    
+    # File settings
+    input: str | Path = ""
+    output: str | Path = ""
+    
+    # Output settings
+    output_format: str = "excel"
 
     def __init__(self, env_files: Optional[list[str]] = None, verbose: int = 0):
         self.env_files = env_files or []
         self.verbose = verbose
-        setup_logging(verbose)  # Use the verbose level directly
+        setup_logging(verbose)
         load_env_files(self.env_files)
+        
+        # Load all settings from environment variables after loading env files
+        self._load_from_environment()
+
+    def _load_from_environment(self):
+        """Load all configuration from environment variables"""
+        # Source/From settings
+        self.from_host = get_env_value("RABBITMQ_FROM_HOST", "localhost")
+        self.from_port = get_env_value("RABBITMQ_FROM_PORT", "15672", int)
+        self.from_username = get_env_value("RABBITMQ_FROM_USERNAME", "guest")
+        self.from_password = get_env_value("RABBITMQ_FROM_PASSWORD", "guest")
+        self.from_ssl = get_env_value("RABBITMQ_FROM_SSL", "false", bool)
+        self.from_vhost = get_env_value("RABBITMQ_FROM_VHOST", "/")
+        
+        # Target/To settings
+        self.to_host = get_env_value("RABBITMQ_TO_HOST", "localhost")
+        self.to_port = get_env_value("RABBITMQ_TO_PORT", "5672", int)
+        self.to_username = get_env_value("RABBITMQ_TO_USERNAME", "guest")
+        self.to_password = get_env_value("RABBITMQ_TO_PASSWORD", "guest")
+        self.to_ssl = get_env_value("RABBITMQ_TO_SSL", "false", bool)
+        self.to_vhost = get_env_value("RABBITMQ_TO_VHOST", "/")
+        
+        # File settings
+        self.input = get_env_value("RABBITMQ_INPUT", "source_rabbitmq.json")
+        self.output = get_env_value("RABBITMQ_OUTPUT", "rabbitmq_export")
+        
+        # Output settings
+        self.output_format = get_env_value("RABBITMQ_OUTPUT_FORMAT", "excel")
+        
+        logger.debug("Loaded configuration from environment:")
+        logger.debug(f"  From: {self.from_username}@{self.from_host}:{self.from_port} (SSL: {self.from_ssl})")
+        logger.debug(f"  To: {self.to_username}@{self.to_host}:{self.to_port} (SSL: {self.to_ssl})")
+        logger.debug(f"  Output format: {self.output_format}")
 
     async def download(self, output: Optional[str | Path] = None):
         """Download the rabbitmq configuration from the source host"""
+        output_file = output or self.output
+        
         async with httpx.AsyncClient() as client:
             headers = {
                 "Content-Type": "application/json"
@@ -46,18 +104,22 @@ class RabbitMQ(object):
             logger.info(f"Downloading rabbitmq configuration from {url}")
             kwargs = {"auth": (self.from_username, self.from_password), "headers": headers}
             response = await client.get(url, **kwargs)
+            response.raise_for_status()
             json_str = response.text
 
-        if output is not None:
-            with open(output, "w") as f:
+        if output_file:
+            with open(output_file, "w") as f:
                 f.write(json_str)
+            logger.info(f"Configuration saved to: {output_file}")
 
     async def upload(self, input: Optional[str | Path] = None):
         """Upload the rabbitmq configuration to the target host"""
-        if input is None:
+        input_file = input or self.input
+        
+        if not input_file:
             raise ValueError("Input file is required")
 
-        with open(input, "r") as f:
+        with open(input_file, "r") as f:
             data = json.load(f)
 
         async with httpx.AsyncClient() as client:
@@ -68,18 +130,20 @@ class RabbitMQ(object):
             logger.info(f"Uploading rabbitmq configuration to {url}")
             kwargs = {"auth": (self.to_username, self.to_password), "headers": headers}
             response = await client.post(url, json=data, **kwargs)
-            print(response.text)
-        # await self._make_request("post", (self.to_username, self.to_password), data, input)
-        logger.info("Uploaded rabbitmq configuration")
+            response.raise_for_status()
+            logger.info("Uploaded rabbitmq configuration successfully")
 
     async def clone(self):
         """Clone the rabbitmq configuration from the source host to the target host"""
         logger.info("Downloading rabbitmq configuration from source host")
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
         await self.download(temp_file.name)
         logger.info("Uploading rabbitmq configuration to target host")
         await self.upload(temp_file.name)
-        logger.info("Cloned rabbitmq configuration")
+        logger.info("Cloned rabbitmq configuration successfully")
+        
+        # Clean up temp file
+        os.unlink(temp_file.name)
 
     async def _make_api_request(self, endpoint: str, host: str, port: int, 
                                username: str, password: str, ssl: bool = False) -> List[Dict]:
@@ -662,7 +726,12 @@ class RabbitMQ(object):
 
 # Helpers
 def load_env_files(env_files):
-    load_dotenv() # Default .env
+    """Load environment files in order"""
+    load_dotenv()  # Default .env
     if env_files:
         for env_file in env_files:
-            load_dotenv(env_file)
+            if os.path.exists(env_file):
+                load_dotenv(env_file, override=True)
+                logger.debug(f"Loaded environment file: {env_file}")
+            else:
+                logger.warning(f"Environment file not found: {env_file}")
