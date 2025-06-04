@@ -15,3 +15,5 @@ data/
 *_rabbitmq.json
 *.xlsx
 rabbitmq_export
+*.json
+rabbit_export
